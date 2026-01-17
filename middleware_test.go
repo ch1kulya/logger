@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestMiddlewareAllMethods(t *testing.T) {
@@ -117,5 +118,57 @@ func TestMiddlewareLevelFiltering(t *testing.T) {
 
 	if buf.Len() > 0 {
 		t.Error("middleware logs should be filtered at WARN level")
+	}
+}
+
+func TestFormatDuration(t *testing.T) {
+	tests := []struct {
+		d        time.Duration
+		expected string
+	}{
+		{0, "<1µs"},
+		{500 * time.Nanosecond, "<1µs"},
+		{1 * time.Microsecond, "1µs"},
+		{50 * time.Microsecond, "50µs"},
+		{1500 * time.Microsecond, "1.5ms"},
+		{50 * time.Millisecond, "50ms"},
+	}
+
+	for _, tt := range tests {
+		got := formatDuration(tt.d)
+		if got != tt.expected {
+			t.Errorf("formatDuration(%v) = %s, want %s", tt.d, got, tt.expected)
+		}
+	}
+}
+
+func TestMiddlewareLatency(t *testing.T) {
+	var buf bytes.Buffer
+	SetOutput(&buf)
+	SetLevel(LevelDebug)
+	defer SetLevel(LevelDebug)
+
+	delays := []time.Duration{
+		5 * time.Millisecond,
+		50 * time.Millisecond,
+	}
+
+	for _, delay := range delays {
+		d := delay
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(d)
+			w.WriteHeader(http.StatusOK)
+		})
+		wrapped := Middleware(handler)
+		req := httptest.NewRequest(http.MethodGet, "/latency", nil)
+		rec := httptest.NewRecorder()
+		wrapped.ServeHTTP(rec, req)
+	}
+
+	out := buf.String()
+	t.Log("\n" + out)
+
+	if !strings.Contains(out, "ms") {
+		t.Error("expected millisecond durations in output")
 	}
 }

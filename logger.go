@@ -17,13 +17,15 @@ const (
 	LevelInfo
 	LevelWarn
 	LevelError
+	LevelFatal
 )
 
 var (
-	level  = LevelDebug
-	mu     sync.RWMutex
-	output io.Writer = os.Stdout
-	errOut io.Writer = os.Stderr
+	level    = LevelDebug
+	mu       sync.RWMutex
+	output   io.Writer = os.Stdout
+	errOut   io.Writer = os.Stderr
+	exitFunc           = os.Exit
 )
 
 var (
@@ -32,6 +34,7 @@ var (
 	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
 	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	fatalStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
 	greenStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
 	cyanStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
 	yellowStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
@@ -94,4 +97,10 @@ func Debug(format string, v ...any) {
 	}
 	msg := fmt.Sprintf(format, v...)
 	fmt.Fprintf(output, "%s %s %s\n", getTimestamp(), debugStyle.Width(7).Render("DEBUG"), msg)
+}
+
+func Fatal(format string, v ...any) {
+	msg := fmt.Sprintf(format, v...)
+	fmt.Fprintf(errOut, "%s %s %s\n", getTimestamp(), fatalStyle.Width(7).Render("FATAL"), msg)
+	exitFunc(1)
 }

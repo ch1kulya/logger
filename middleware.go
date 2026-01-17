@@ -76,6 +76,13 @@ func formatSize(bytes int) string {
 	}
 }
 
+func formatDuration(d time.Duration) string {
+	if d < time.Microsecond {
+		return "<1µs"
+	}
+	return d.Round(time.Microsecond).String()
+}
+
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -101,7 +108,7 @@ func Middleware(next http.Handler) http.Handler {
 			formatSize(wrapper.size),
 			statusStyle.Width(3).Render(fmt.Sprintf("%d", wrapper.status)),
 			r.URL.Path,
-			dimStyle.Render(duration.Round(time.Microsecond).String()),
+			dimStyle.Render(formatDuration(duration)),
 		)
 	})
 }
