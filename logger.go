@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 type Level int
@@ -103,4 +104,12 @@ func Fatal(format string, v ...any) {
 	msg := fmt.Sprintf(format, v...)
 	fmt.Fprintf(errOut, "%s %s %s\n", getTimestamp(), fatalStyle.Width(7).Render("FATAL"), msg)
 	exitFunc(1)
+}
+
+func SetForceColor(force bool) {
+	if force {
+		lipgloss.SetColorProfile(termenv.TrueColor)
+	} else {
+		lipgloss.SetColorProfile(termenv.Ascii)
+	}
 }
