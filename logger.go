@@ -2,44 +2,96 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"sync"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
 )
+
+type Level int
 
 const (
-	Reset = "\033[0m"
-	Dim   = "\033[2m"
-
-	Red     = "\033[91m"
-	Green   = "\033[92m"
-	Yellow  = "\033[93m"
-	Blue    = "\033[94m"
-	Magenta = "\033[95m"
-	Cyan    = "\033[96m"
-	White   = "\033[97m"
-	Gray    = "\033[90m"
+	LevelDebug Level = iota
+	LevelInfo
+	LevelWarn
+	LevelError
 )
 
+var (
+	level  = LevelDebug
+	mu     sync.RWMutex
+	output io.Writer = os.Stdout
+	errOut io.Writer = os.Stderr
+)
+
+var (
+	dimStyle     = lipgloss.NewStyle().Faint(true)
+	debugStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
+	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
+	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	greenStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	cyanStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
+	yellowStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	magentaStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
+	redStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	grayStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	whiteStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+)
+
+func SetLevel(l Level) {
+	mu.Lock()
+	defer mu.Unlock()
+	level = l
+}
+
+func SetOutput(w io.Writer) {
+	mu.Lock()
+	defer mu.Unlock()
+	output = w
+	errOut = w
+}
+
+func getLevel() Level {
+	mu.RLock()
+	defer mu.RUnlock()
+	return level
+}
+
 func getTimestamp() string {
-	return fmt.Sprintf("%s%s%s", Dim, time.Now().Format("15:04:05"), Reset)
+	return dimStyle.Render(time.Now().Format("15:04:05"))
 }
 
 func Info(format string, v ...any) {
+	if getLevel() > LevelInfo {
+		return
+	}
 	msg := fmt.Sprintf(format, v...)
-	fmt.Printf("%s %s%-19s%s %s\n", getTimestamp(), Magenta, "INFO", Reset, msg)
+	fmt.Fprintf(output, "%s %s %s\n", getTimestamp(), infoStyle.Width(7).Render("INFO"), msg)
 }
 
 func Error(format string, v ...any) {
+	if getLevel() > LevelError {
+		return
+	}
 	msg := fmt.Sprintf(format, v...)
-	fmt.Fprintf(os.Stderr, "%s %s%-19s%s %s\n", getTimestamp(), Red, "ERR", Reset, msg)
+	fmt.Fprintf(errOut, "%s %s %s\n", getTimestamp(), errorStyle.Width(7).Render("ERR"), msg)
 }
 
 func Warn(format string, v ...any) {
+	if getLevel() > LevelWarn {
+		return
+	}
 	msg := fmt.Sprintf(format, v...)
-	fmt.Printf("%s %s%-19s%s %s\n", getTimestamp(), Yellow, "WARN", Reset, msg)
+	fmt.Fprintf(output, "%s %s %s\n", getTimestamp(), warnStyle.Width(7).Render("WARN"), msg)
 }
 
 func Debug(format string, v ...any) {
+	if getLevel() > LevelDebug {
+		return
+	}
 	msg := fmt.Sprintf(format, v...)
-	fmt.Printf("%s %s%-19s%s %s\n", getTimestamp(), Blue, "DEBUG", Reset, msg)
+	fmt.Fprintf(output, "%s %s %s\n", getTimestamp(), debugStyle.Width(7).Render("DEBUG"), msg)
 }

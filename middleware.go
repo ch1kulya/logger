@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 type responseWriterWrapper struct {
@@ -31,35 +33,35 @@ func (rw *responseWriterWrapper) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func getMethodColor(method string) string {
+func getMethodStyle(method string) lipgloss.Style {
 	switch method {
 	case http.MethodGet:
-		return Green
+		return greenStyle
 	case http.MethodPost:
-		return Cyan
+		return cyanStyle
 	case http.MethodPut:
-		return Yellow
+		return yellowStyle
 	case http.MethodPatch:
-		return Magenta
+		return magentaStyle
 	case http.MethodDelete:
-		return Red
+		return redStyle
 	case http.MethodOptions, http.MethodHead:
-		return Gray
+		return grayStyle
 	default:
-		return White
+		return whiteStyle
 	}
 }
 
-func getStatusColor(status int) string {
+func getStatusStyle(status int) lipgloss.Style {
 	switch {
 	case status >= 500:
-		return Red
+		return redStyle
 	case status >= 400:
-		return Yellow
+		return yellowStyle
 	case status >= 300:
-		return Cyan
+		return cyanStyle
 	default:
-		return Green
+		return greenStyle
 	}
 }
 
@@ -85,17 +87,21 @@ func Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(wrapper, r)
 
-		methodColor := getMethodColor(r.Method)
-		statusColor := getStatusColor(wrapper.status)
+		if getLevel() > LevelInfo {
+			return
+		}
+
+		methodStyle := getMethodStyle(r.Method)
+		statusStyle := getStatusStyle(wrapper.status)
 		duration := time.Since(start)
 
-		fmt.Printf("%s %s%-7s%s %-7s %s%-3d%s %s %s%s%s\n",
+		fmt.Fprintf(output, "%s %s %-7s %s %s %s\n",
 			getTimestamp(),
-			methodColor, r.Method, Reset,
+			methodStyle.Width(7).Render(r.Method),
 			formatSize(wrapper.size),
-			statusColor, wrapper.status, Reset,
+			statusStyle.Width(3).Render(fmt.Sprintf("%d", wrapper.status)),
 			r.URL.Path,
-			Dim, duration.Round(time.Microsecond), Reset,
+			dimStyle.Render(duration.Round(time.Microsecond).String()),
 		)
 	})
 }
